@@ -11,7 +11,10 @@ public class Test {
     public static void main(String[] args) {
         SpringApplicationContext applicationContext = new SpringApplicationContext(AppConfig.class);
 
-        Object userService = applicationContext.getBean("userService");
+        System.out.println(applicationContext.getBean("userService"));
+        System.out.println(applicationContext.getBean("userService"));
+        System.out.println(applicationContext.getBean("userService"));
+
     }
 
 

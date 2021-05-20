@@ -8,7 +8,6 @@ import com.spring.Scope;
  * @create 2021-05-19 10:08
  */
 @ComponentScan("com.mikiyo.service")
-@Scope("prototype")
 public class AppConfig {
 
 
