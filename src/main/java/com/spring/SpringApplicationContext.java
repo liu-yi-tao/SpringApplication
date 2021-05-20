@@ -1,10 +1,14 @@
 package com.spring;
 
+import javax.sound.midi.Soundbank;
 import java.io.File;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.FileNameMap;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -19,6 +23,7 @@ public class SpringApplicationContext {
     // 单例池
     private ConcurrentHashMap<String, Object> singletonObjects = new ConcurrentHashMap<>();
     private ConcurrentHashMap<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
+    private List<BeanPostProcessor> beanPostProcessorList = new ArrayList<>();
 
     public SpringApplicationContext(Class configClass) {
 
@@ -33,17 +38,51 @@ public class SpringApplicationContext {
             BeanDefinition beanDefinition = entry.getValue();
             if ("singleton".equals(beanDefinition.getScope())) {
                 // 单例 bean
-                Object bean = createBean(beanDefinition);
+                Object bean = createBean(beanName, beanDefinition);
                 singletonObjects.put(beanName, bean);
             }
         }
 
     }
 
-    private Object createBean(BeanDefinition beanDefinition) {
+    private Object createBean(String beanName, BeanDefinition beanDefinition) {
         Class clazz = beanDefinition.getClazz();
+
         try {
             Object instance = clazz.getDeclaredConstructor().newInstance();
+
+            // 依赖注入
+            for (Field declaredField : clazz.getDeclaredFields()) {
+                if (declaredField.isAnnotationPresent(Autowired.class)) {
+                    Object bean = getBean(declaredField.getName());
+                    declaredField.setAccessible(true);
+                    declaredField.set(instance, bean);
+                }
+            }
+
+            // Aware 回调
+            if (instance instanceof BeanNameAware) {
+                ((BeanNameAware) instance).setBeanName(beanName);
+            }
+
+            // 初始化前
+            for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
+                instance = beanPostProcessor.postProcessBeforeInitialization(instance, beanName);
+            }
+
+            // 初始化
+            if (instance instanceof InitializingBean) {
+                try {
+                    ((InitializingBean) instance).afterPropertiesSet();
+                } catch (Exception e) {
+
+                }
+            }
+
+            // 初始化后
+            for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
+                instance = beanPostProcessor.postProcessAfterInitialization(instance, beanName);
+            }
 
             return instance;
         } catch (InstantiationException e) {
@@ -63,7 +102,7 @@ public class SpringApplicationContext {
         //        // 扫描路径
         String path = componentScanAnnotation.value();
         path = path.replace(".", "/");
-        // 扫描
+        //        // 扫描
         // Bootstrap ---> jre/lib
         // Ext ---------> jre/ext/lib
         // App ---------> classpath
@@ -87,6 +126,12 @@ public class SpringApplicationContext {
                             // 表示当前这个类是一个bean
                             // 解析类，判断当前bean是单例bean，还是prototype的bean 解析类 ---> beanDefinition
 
+                            if (BeanPostProcessor.class.isAssignableFrom(clazz)) {
+                                BeanPostProcessor instance = (BeanPostProcessor) clazz.getDeclaredConstructor().newInstance();
+                                beanPostProcessorList.add(instance);
+                            }
+
+
                             Component componentAnnotation = clazz.getDeclaredAnnotation(Component.class);
                             String beanName = componentAnnotation.value();
 
@@ -103,6 +148,14 @@ public class SpringApplicationContext {
                         }
                     } catch (ClassNotFoundException e) {
                         e.printStackTrace();
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    } catch (InstantiationException e) {
+                        e.printStackTrace();
+                    } catch (NoSuchMethodException e) {
+                        e.printStackTrace();
+                    } catch (InvocationTargetException e) {
+                        e.printStackTrace();
                     }
                 }
             }
@@ -118,7 +171,7 @@ public class SpringApplicationContext {
                 return o;
             } else {
                 // 创建 bean 对象
-                Object bean = createBean(beanDefinition);
+                Object bean = createBean(beanName, beanDefinition);
                 return bean;
             }
         } else {
