@@ -8,6 +8,7 @@ import java.lang.annotation.Target;
 /**
  * @author Mikiyo
  * @create 2021-05-19 9:55
+ * @message 自动注入注解
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.FIELD})

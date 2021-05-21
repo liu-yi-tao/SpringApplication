@@ -6,7 +6,10 @@ package com.spring;
  */
 public class BeanDefinition {
 
+    // 类
     private Class clazz;
+
+    // 类标识
     private String scope;
 
     public void setClazz(Class clazz) {

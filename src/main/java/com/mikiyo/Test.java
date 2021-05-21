@@ -10,8 +10,10 @@ import com.spring.SpringApplicationContext;
 public class Test {
 
     public static void main(String[] args) {
+        // 创建 bean 容器
         SpringApplicationContext applicationContext = new SpringApplicationContext(AppConfig.class);
 
+        // 获取 bean 对象
         UserService userService = (UserService) applicationContext.getBean("userService");
         userService.test();
 
